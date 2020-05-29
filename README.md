@@ -27,7 +27,7 @@ etc<br>
 ...<br>
 profit<br>
 <br>
-Usage without python 3:<br>
+<b>Usage without python 3:</b><br>
 1. Download the executable from releases<br>
 2. Download tesseract and install as stated above<br>
 3. Download the correct version of chromedriver as stated above<br>
