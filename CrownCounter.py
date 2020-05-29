@@ -78,11 +78,11 @@ class CrownCounter():
         :param password:
         """
         self.enter_credentials(username, password)
-        time.sleep(1)
+        time.sleep(.2)
         wiz_url = "https://www.wizard101.com/game"
         if self.driver.current_url != wiz_url:
             self.attempt_captcha()
-            time.sleep(2)
+            time.sleep(.3)
 
     def curr_crown_count(self):
         """
