@@ -1,4 +1,4 @@
 @echo off
-python CrownCounter.py
 color 0b
+python CrownCounter.py
 @echo on

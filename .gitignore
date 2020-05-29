@@ -1,3 +1,6 @@
 __pycache__/
+.idea/
 screenshot.png
 debug.log
+output.txt
+accounts.txt
