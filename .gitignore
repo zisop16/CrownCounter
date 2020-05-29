@@ -1,6 +1,10 @@
 __pycache__/
+build/
+dist/
+CrownCounter.spec
 .idea/
 screenshot.png
 debug.log
 output.txt
 accounts.txt
+build.bat

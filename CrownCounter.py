@@ -140,7 +140,13 @@ if __name__ == '__main__':
             os.system("exit")
 
     for account in accounts:
-        username, password = account.split(":")
+        try:
+            username, password = account.split(":")
+        except ValueError:
+            curr_text = ("Account: %s was formatted incorrectly") % account
+            print(curr_text)
+            output_text += curr_text + "\n"
+            continue
         crowns = find_crowns(username, password)
         curr_text = "Account: %s had %i crowns" % (username, crowns)
         print(curr_text)
