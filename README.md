@@ -1,7 +1,7 @@
 # CrownCounter
 counts crowns uwu<br>
 
-<b>Usage with Python 3:<\b><br>
+<b>Usage with Python 3:</b><br>
 
 1. Download python 3 from https://www.python.org/downloads/<br>
 2. Install it<br>
@@ -25,4 +25,13 @@ etc<br>
 <br>
 10. Run start.bat<br>
 ...<br>
-profit
+profit<br>
+<br>
+Usage without python 3:<br>
+1. Download the executable from releases<br>
+2. Download tesseract and install as stated above<br>
+3. Download the correct version of chromedriver as stated above<br>
+4. Create an accounts.txt as stated above<br>
+5. Move chromedriver, accounts, and the executable into the same folder<br>
+6. Run crowncounter.exe<br>
+7. <b>Say uwu</b>
