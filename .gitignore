@@ -1,10 +1,11 @@
 __pycache__/
 build/
 dist/
+screenshots/
 CrownCounter.spec
 .idea/
-screenshot.png
 debug.log
 output.txt
 accounts.txt
 build.bat
+config.txt
