@@ -186,7 +186,7 @@ if __name__ == '__main__':
     tess_path = "C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
     captcha_solver = CaptchaSolver(tess_path)
     chrome_options = Options()
-    #chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--headless")
 
     def create_counter():
         driver = webdriver.Chrome(chrome_path, options = chrome_options)
