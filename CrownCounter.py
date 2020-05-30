@@ -17,7 +17,7 @@ class CrownCounter():
     def __init__(self, captcha_solver, driver):
         self.solver = captcha_solver
         self.driver = driver
-        self.output_text = ""
+        self.account_info = {}
         self.total_crowns = 0
         self.packs_199 = 0
         self.packs_299 = 0
@@ -39,6 +39,7 @@ class CrownCounter():
         if self.too_many_reqs():
             time.sleep(15)
             self.enter_credentials(username, password)
+            return
 
         user_field = self.driver.find_element_by_xpath(r"/html/body/table/tbody/tr[2]/td[2]/form/table[1]/tbody/tr[1]/td[2]/input")
         user_field.clear()
@@ -59,6 +60,7 @@ class CrownCounter():
             time.sleep(15)
             self.enter_credentials(username, password)
             self.attempt_captcha(username, password)
+            return
         #Because there are two possible captcha urls, there are two possible xpaths for each distinct site
         try:
             captcha_element = self.driver.find_element_by_xpath(r"/html/body/table/tbody/tr[2]/td[2]/form/div[3]/div/table/tbody/tr[1]/td[3]/div/img")
@@ -111,7 +113,7 @@ class CrownCounter():
         except NoSuchElementException:
             return False
 
-    def curr_crown_count(self):
+    def curr_crown_count(self, attempt_num = 1):
         """
         Finds the crown count of the currently logged in account\n
         :return: integer representing the number of crowns
@@ -124,7 +126,9 @@ class CrownCounter():
         try:
             crowns_element = self.driver.find_element_by_xpath(r"/html/body/table/tbody/tr/td/table/tbody/tr/td/table/tbody/tr/td/table/tbody/tr/td/table/tbody/tr/td/div/div[3]/div/div[2]/div[2]/div/div[2]/table/tbody/tr/td[2]/div/div[2]/div/table/tbody/tr[1]/td[3]/table/tbody/tr/td[2]/b")
         except NoSuchElementException:
-            return CROWNS_UNFOUND
+            if attempt_num == 4:
+                return CROWNS_UNFOUND
+            return self.curr_crown_count(attempt_num = attempt_num + 1)
         crowns = int(crowns_element.text.replace(',', ''))
         return crowns
 
@@ -155,13 +159,13 @@ class CrownCounter():
         except ValueError:
             curr_text = ("Account: %s was formatted incorrectly") % account
             print(curr_text)
-            self.output_text += curr_text + "\n"
+            self.account_info[account] = curr_text + "\n"
             return
         crowns = self.find_crowns(username, password)
         if crowns == CROWNS_UNFOUND:
             curr_text = "Couldn't find crowns for account: %s" % account
             print(curr_text)
-            self.output_text += curr_text + "\n"
+            self.account_info[account] = curr_text + "\n"
             return
         self.total_crowns += crowns
         self.packs_199 += crowns // 199
@@ -171,7 +175,7 @@ class CrownCounter():
         self.energy_elixirs += crowns // 250
         curr_text = "Account: %s had %i crowns" % (username, crowns)
         print(curr_text)
-        return curr_text + "\n"
+        self.account_info[account] = curr_text + "\n"
 
 
 if __name__ == '__main__':
@@ -182,7 +186,7 @@ if __name__ == '__main__':
     tess_path = "C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
     captcha_solver = CaptchaSolver(tess_path)
     chrome_options = Options()
-    chrome_options.add_argument("--headless")
+    #chrome_options.add_argument("--headless")
 
     def create_counter():
         driver = webdriver.Chrome(chrome_path, options = chrome_options)
@@ -247,6 +251,7 @@ if __name__ == '__main__':
         new_thread = CounterThread(create_counter())
         all_threads.append(new_thread)
         new_thread.start()
+
     for account in accounts:
         found_assignment = False
         while not found_assignment:
@@ -263,6 +268,7 @@ if __name__ == '__main__':
         thread.last_account = True
         thread.join()
 
+    all_account_info = {}
     output_text = ""
     total_crowns = 0
     packs_199 = 0
@@ -271,13 +277,18 @@ if __name__ == '__main__':
     packs_599 = 0
     energy_elixirs = 0
     for thread in all_threads:
-        output_text += thread.counter.output_text
+        curr_info = thread.counter.account_info
+        for key in curr_info:
+            all_account_info[key] = curr_info[key]
         total_crowns += thread.counter.total_crowns
         packs_199 += thread.counter.packs_199
         packs_299 += thread.counter.packs_299
         packs_399 += thread.counter.packs_399
         packs_599 += thread.counter.packs_599
         energy_elixirs += thread.counter.energy_elixirs
+
+    for account in accounts:
+        output_text += all_account_info[account]
 
     curr_text = """
 Total Crowns: %i
