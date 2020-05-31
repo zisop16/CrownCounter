@@ -1,6 +1,7 @@
 __pycache__/
 build/
 dist/
+venv/
 screenshots/
 CrownCounter.spec
 .idea/
