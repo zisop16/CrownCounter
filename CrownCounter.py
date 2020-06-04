@@ -242,7 +242,7 @@ if __name__ == '__main__':
         """
         chrome_path = "chromedriver.exe"
         chrome_options = Options()
-        #chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--headless")
 
         def create_counter():
             driver = webdriver.Chrome(chrome_path, options = chrome_options)
@@ -320,8 +320,8 @@ if __name__ == '__main__':
                         When the robot finishes counting crowns on an account, it will set its .finished variable to True
                         This tells it to stop trying to run accounts until it isn't finished, and tells
                         The client to assign it a new account
-                        self.finished = True
                         """
+                        self.finished = True
                     time.sleep(1)
 
             def run_account(self, account):
