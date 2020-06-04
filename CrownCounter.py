@@ -449,13 +449,13 @@ if __name__ == '__main__':
         We store it into curr_text so it can be added to output_text
         """
         curr_text = """
-    Total Crowns: %i
+Total Crowns: %i
     
-    Purchaseable 199 packs: %i
-    Purchaseable 299 packs: %i
-    Purchaseable 399 packs: %i
-    Purchaseable 599 packs: %i
-    Purchaseable Energy elixirs: %i""" % (total_crowns, packs_199, packs_299, packs_399, packs_599, energy_elixirs)
+Purchaseable 199 packs: %i
+Purchaseable 299 packs: %i
+Purchaseable 399 packs: %i
+Purchaseable 599 packs: %i
+Purchaseable Energy elixirs: %i""" % (total_crowns, packs_199, packs_299, packs_399, packs_599, energy_elixirs)
         print(curr_text)
         output_text += curr_text
 
