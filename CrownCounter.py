@@ -387,6 +387,10 @@ if __name__ == '__main__':
                 if not found_assignment:
                     time.sleep(2)
 
+        # This wait is necessary to prevent the program going too fast and forgetting to join together
+        # I really dont have a clue why. I probably did something wrong
+        time.sleep(5)
+
         for thread in all_threads:
             """
             We tell each thread that they are on their last account, so they should exit the while loop
@@ -395,9 +399,7 @@ if __name__ == '__main__':
             thread.last_account = True
             thread.join()
 
-        # This wait is necessary to prevent the program going too fast and forgetting to join together
-        # I really dont have a clue why. I probably did something wrong
-        time.sleep(5)
+
 
         """
         Each thread stores an account_info set that contains the output text for each account,
