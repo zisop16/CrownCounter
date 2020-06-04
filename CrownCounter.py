@@ -52,18 +52,15 @@ class CrownCounter():
             return
 
         #Enter the username into the user name field of the login page
-        user_field = self.driver.find_element_by_xpath(r"/html/body/table/tbody/tr[2]/td[2]/form/table[1]/tbody/tr["
-                                                       r"1]/td[2]/input")
+        user_field = self.driver.find_element_by_id(r"userName")
         user_field.clear()
         user_field.send_keys(username)
         #Enter the password into the password field of the login page
-        pass_field = self.driver.find_element_by_xpath(r"/html/body/table/tbody/tr[2]/td[2]/form/table[1]/tbody/tr["
-                                                       r"2]/td[2]/input")
+        pass_field = self.driver.find_element_by_id(r"password")
         pass_field.clear()
         pass_field.send_keys(password)
         #Click the enter button to log in
-        enter_button = self.driver.find_element_by_xpath(r"/html/body/table/tbody/tr[2]/td[2]/form/table["
-                                                         r"2]/tbody/tr/td[2]/a")
+        enter_button = self.driver.find_element_by_id(r"bp_login")
         enter_button.click()
 
     def attempt_captcha(self, username, password):
@@ -76,13 +73,7 @@ class CrownCounter():
             enter_cred = self.enter_credentials(username, password)
             self.attempt_captcha(username, password)
             return
-        #Because there are two possible captcha urls, there are two possible xpaths for each distinct site
-        try:
-            captcha_element = self.driver.find_element_by_xpath(r"/html/body/table/tbody/tr[2]/td[2]/form/div["
-                                                                r"3]/div/table/tbody/tr[1]/td[3]/div/img")
-        except NoSuchElementException:
-            captcha_element = self.driver.find_element_by_xpath(r"/html/body/table/tbody/tr[2]/td[2]/form/div["
-                                                                r"4]/div/table/tbody/tr[1]/td[3]/div/img")
+        captcha_element = self.driver.find_element_by_id(r"captchaImage")
         #We create the screenshot directory if it didn't already exist
         if not os.path.isdir("screenshots"):
             os.mkdir("screenshots")
@@ -103,19 +94,12 @@ class CrownCounter():
         except TesseractNotFoundError():
             return TESS_UNFOUND
 
-        #Again, two possible xpaths for the captcha entering field
-        try:
-            captcha_field = self.driver.find_element_by_xpath(r"/html/body/table/tbody/tr[2]/td[2]/form/div["
-                                                              r"3]/div/table/tbody/tr[2]/td[3]/div/input")
-        except NoSuchElementException:
-            captcha_field = self.driver.find_element_by_xpath(r"/html/body/table/tbody/tr[2]/td[2]/form/div["
-                                                              r"4]/div/table/tbody/tr[2]/td[3]/div/input")
+        captcha_field = self.driver.find_element_by_id(r"captcha")
 
         #Enters the captcha solution and clicks the login button
         captcha_field.clear()
         captcha_field.send_keys(captcha_solution)
-        enter_button = self.driver.find_element_by_xpath(r"/html/body/table/tbody/tr[2]/td[2]/form/table["
-                                                         r"1]/tbody/tr/td/div/div/input")
+        enter_button = self.driver.find_element_by_id(r"login")
         enter_button.click()
 
     def attempt_login(self, username, password):
@@ -158,12 +142,7 @@ class CrownCounter():
             time.sleep(15)
             return self.curr_crown_count()
         try:
-            crowns_element = self.driver.find_element_by_xpath(r"/html/body/table/tbody/tr/td/table/tbody/tr/td/table"
-                                                               r"/tbody/tr/td/table/tbody/tr/td/table/tbody/tr/td/div"
-                                                               r"/div[3]/div/div[2]/div[2]/div/div["
-                                                               r"2]/table/tbody/tr/td[2]/div/div["
-                                                               r"2]/div/table/tbody/tr[1]/td[3]/table/tbody/tr/td["
-                                                               r"2]/b")
+            crowns_element = self.driver.find_element_by_class_name(r"crownsbalance")
         except NoSuchElementException:
             if attempt_num == 4:
                 return CROWNS_UNFOUND
