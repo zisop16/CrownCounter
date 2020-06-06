@@ -1,14 +1,18 @@
-import re
-import requests
-import time
-import json
-from os import mkdir
-from os.path import exists
-from pytesseract.pytesseract import TesseractNotFoundError
-from threading import Thread
+try:
+    import re
+    import requests
+    import time
+    import json
+    from os import mkdir
+    from os.path import exists
+    from pytesseract.pytesseract import TesseractNotFoundError
+    from threading import Thread
 
-from CaptchaSolve import CaptchaSolver
-from PIL import Image
+    from CaptchaSolve import CaptchaSolver
+    from PIL import Image
+except ModuleNotFoundError:
+    print("Couldn't find one of the required modules... run setup.bat then restart)
+    quit()
 
 
 class CrownCounter(Thread):
