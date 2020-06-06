@@ -4,6 +4,7 @@ from functools import reduce
 import math
 
 class CaptchaSolver():
+	white_pixel = (255, 255, 255)
 	def __init__(self, tesseract_path):
 		tess.pytesseract.tesseract_cmd = tesseract_path
 	def rgb_to_hsv(self, r, g, b):
@@ -39,13 +40,17 @@ class CaptchaSolver():
 		else:
 			return False
 
+	def isBlack(self, color):
+		h, s, v = self.rgb_to_hsv(color[0], color[1], color[2])
+		return v < 22
+
 	def getNeighborPixels(self, img, i, j):
-		arr = []
-		arr.append(self.getRGB(img, i, j + 1))
-		arr.append(self.getRGB(img, i + 1, j))
-		arr.append(self.getRGB(img, i - 1, j))
-		arr.append(self.getRGB(img, i, j - 1))
-		return arr
+		return [
+			self.getRGB(img, i, j + 1),
+			self.getRGB(img, i + 1, j),
+			self.getRGB(img, i - 1, j),
+			self.getRGB(img, i, j - 1)
+		]
 
 	def removeYellowLine(self, origImage, img):
 		ok = True
@@ -69,7 +74,16 @@ class CaptchaSolver():
 		if not ok:
 			self.removeYellowLine(origImage, img)
 
+	def remove_light(self, origImage, img):
+		width, height = origImage.size
+		for row in range(width):
+			for col in range(height):
+				curr_pixel = img[row, col]
+				if not self.isBlack(curr_pixel):
+					img[row, col] = CaptchaSolver.white_pixel
+
 	def resolve(self, orig_img):
 		img = orig_img.load()
 		self.removeYellowLine(orig_img, img)
+		self.remove_light(orig_img, img)
 		return tess.image_to_string(orig_img, lang="eng", config="-c tessedit_char_whitelist=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ").lower()

@@ -2,7 +2,7 @@ __pycache__/
 build/
 dist/
 venv/
-screenshots/
+captcha/
 CrownCounter.spec
 .idea/
 debug.log
