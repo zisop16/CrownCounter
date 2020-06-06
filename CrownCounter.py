@@ -11,7 +11,7 @@ try:
     from CaptchaSolve import CaptchaSolver
     from PIL import Image
 except ModuleNotFoundError:
-    print("Couldn't find one of the required modules... run setup.bat then restart)
+    print("Couldn't find one of the required modules... run setup.bat then restart")
     quit()
 
 
