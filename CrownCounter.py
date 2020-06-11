@@ -10,6 +10,7 @@ try:
 
     from CaptchaSolve import CaptchaSolver
     from PIL import Image
+    from PIL import UnidentifiedImageError
 except ModuleNotFoundError:
     print("Couldn't find one of the required modules... run setup.bat then restart")
     quit()
@@ -79,64 +80,73 @@ class CrownCounter(Thread):
         self.finished = False
 
     def get_crowns_bal(self, connection, username, password):
-        login_data = {
-            "userName": username,
-            "password": password,
-            # Necessary string in order to show KI that we're submitting a login
-            "t:formdata": "H4sIAAAAAAAAAJXRvUoDQRAH8E0wEkiniPiFFrHda0yhNqYRxUOEEAu7vdvxsslmd93Z804LW9/"
-                          "CJxBrrVPY+Q4+gG0qC/cCEeQkYrMLwzDz4z+PH6SWbZINlrpekIlbZnkQ6kSoPQtcWIhdaiVacqBtQplhcQ+oYwbQ"
-                          "2ZsWjbUFKSL/D41WoBzSI8E5qOaZ1TEgdtJoKBCFVhf3W4v52vN8lVRC0oi1clbLUzYERxbCPrtmgWQqCTrOCpXs5"
-                          "8aRxlTQtTJbJ6tlYopglR/hfa2Zvogh0Hbkiyx2hwIkb3bApWa7O2q8L71+llBX5I5UCkS92FFU/hS0/ysoRTR64j"
-                          "uX44e3KiG5+X2fYYiZthwL4JznTQuz24vuerZClsstsng9f9ffkA589ihQAs3gx1UnSBcKNSizX04G/fNQjSch1lw"
-                          "Pjvl3fLXJ+C8uOCzhZQIAAA==",
-        }
+        def login():
+            login_data = {
+                "userName": username,
+                "password": password,
+                # Necessary string in order to show KI that we're submitting a login
+                "t:formdata": "H4sIAAAAAAAAAJXRvUoDQRAH8E0wEkiniPiFFrHda0yhNqYRxUOEEAu7vdvxsslmd93Z804LW9/"
+                              "CJxBrrVPY+Q4+gG0qC/cCEeQkYrMLwzDz4z+PH6SWbZINlrpekIlbZnkQ6kSoPQtcWIhdaiVacqBtQplhcQ+oYwbQ"
+                              "2ZsWjbUFKSL/D41WoBzSI8E5qOaZ1TEgdtJoKBCFVhf3W4v52vN8lVRC0oi1clbLUzYERxbCPrtmgWQqCTrOCpXs5"
+                              "8aRxlTQtTJbJ6tlYopglR/hfa2Zvogh0Hbkiyx2hwIkb3bApWa7O2q8L71+llBX5I5UCkS92FFU/hS0/ysoRTR64j"
+                              "uX44e3KiG5+X2fYYiZthwL4JznTQuz24vuerZClsstsng9f9ffkA589ihQAs3gx1UnSBcKNSizX04G/fNQjSch1lw"
+                              "Pjvl3fLXJ+C8uOCzhZQIAAA==",
+            }
 
-        print("Logging in...")
-        with connection.post(CrownCounter.LOGIN_URL, data=login_data) as res:
-            login_page = res.text
-            quarantined = "quarantined" in login_page
-            many_reqs = "Too Many Requests" in login_page
-        if many_reqs:
-            print("Too many requests... sleeping")
-            time.sleep(15)
-            return self.get_crowns_bal(connection, username, password)
+            print("Logging in...")
+            with connection.post(CrownCounter.LOGIN_URL, data=login_data) as res:
+                login_page = res.text
+                quarantined = "quarantined" in login_page
+                many_reqs = "Too Many Requests" in login_page
+            if many_reqs:
+                print("Too many requests... sleeping")
+                time.sleep(15)
+                return self.get_crowns_bal(connection, username, password)
 
-        if quarantined:
-            def solve_captcha():
-                print("Solving captcha...")
-                with connection.get(CrownCounter.CAPTCHA_URL) as captcha_page:
+            if quarantined:
+                def solve_captcha():
+                    print("Solving captcha...")
                     captcha_dir = "captcha"
-                    if not exists(captcha_dir):
-                        mkdir(captcha_dir)
-                    with open(f"{captcha_dir}/CaptchaImage{self.id}.png", "wb") as captcha_file:
-                        captcha_file.write(captcha_page.content)
-                captcha_img = Image.open(f"{captcha_dir}/CaptchaImage{self.id}.png")
-                try:
-                    captcha_solution = CrownCounter.solver.resolve(captcha_img)
-                except TesseractNotFoundError:
-                    return CrownCounter.TESS_UNFOUND
+                    def write_captcha():
+                        with connection.get(CrownCounter.CAPTCHA_URL) as captcha_page:
+                            if not exists(captcha_dir):
+                                mkdir(captcha_dir)
+                            with open(f"{captcha_dir}/CaptchaImage{self.id}.png", "wb") as captcha_file:
+                                captcha_file.write(captcha_page.content)
+                    write_captcha()
+                    while True:
+                        try:
+                            captcha_img = Image.open(f"{captcha_dir}/CaptchaImage{self.id}.png")
+                            break
+                        except UnidentifiedImageError:
+                            time.sleep(10)
+                            write_captcha()
+                    try:
+                        captcha_solution = CrownCounter.solver.resolve(captcha_img)
+                    except TesseractNotFoundError:
+                        return CrownCounter.TESS_UNFOUND
 
-                captcha_data = {
-                    "captcha": captcha_solution,
-                    "t:formdata": "H4sIAAAAAAAAAJ2RsUoDQRCGJwdRIZ1iITYiEUTkrjGNNgZBFA5RjjR2c7vjZWVv99zd86KFleA"
-                                  "z2PgEYqVgn8LOd/ABbCysLLwcSSGBQGzmh2Hg+/jn8RPqxQasY+66QSGu0fDgJEeDyglFPNSJUNuGuDDEXG6kNbCr"
-                                  "TeJjhqxLvsOMrDNXLZ9pQ1LEZaaZVqSc9Q8E56Sax0YzsjbK41RYK7Q6vVtZ6C2/znhQC6HBtHJGyyNMycF8eI6XG"
-                                  "EhUSRA5I1Sy08scNEYGHSMLHzYn2jLMHOuiP8zSuDXROEZLfjsul8jcviDJmxG5PFvr9Bsfi28/Y5oXcAO1gdbsEP"
-                                  "EPpfa0SmMt9p/41tn3w7sH0MuKJqxONJCDOc3zKpAbx95HX0svz7d7HnghzDEpyutDXlVStkSS0nLxp6V6xR7lLwg"
-                                  "o+KJxAgAA",
-                }
+                    captcha_data = {
+                        "captcha": captcha_solution,
+                        "t:formdata": "H4sIAAAAAAAAAJ2RsUoDQRCGJwdRIZ1iITYiEUTkrjGNNgZBFA5RjjR2c7vjZWVv99zd86KFleA"
+                                      "z2PgEYqVgn8LOd/ABbCysLLwcSSGBQGzmh2Hg+/jn8RPqxQasY+66QSGu0fDgJEeDyglFPNSJUNuGuDDEXG6kNbCr"
+                                      "TeJjhqxLvsOMrDNXLZ9pQ1LEZaaZVqSc9Q8E56Sax0YzsjbK41RYK7Q6vVtZ6C2/znhQC6HBtHJGyyNMycF8eI6XG"
+                                      "EhUSRA5I1Sy08scNEYGHSMLHzYn2jLMHOuiP8zSuDXROEZLfjsul8jcviDJmxG5PFvr9Bsfi28/Y5oXcAO1gdbsEP"
+                                      "EPpfa0SmMt9p/41tn3w7sH0MuKJqxONJCDOc3zKpAbx95HX0svz7d7HnghzDEpyutDXlVStkSS0nLxp6V6xR7lLwg"
+                                      "o+KJxAgAA",
+                    }
 
-                with connection.post(CrownCounter.QUARANTINED_URL, captcha_data) as res:
-                    result_page = res.text
-                    quarantined = "quarantined" in result_page
-                    many_reqs = "Too Many Requests" in login_page
-                if quarantined:
-                    solve_captcha()
-                if many_reqs:
-                    print("Too many requests... sleeping")
-                    time.sleep(15)
-                    return self.get_crowns_bal(connection, username, password)
-            solve_captcha()
+                    with connection.post(CrownCounter.QUARANTINED_URL, captcha_data) as res:
+                        result_page = res.text
+                        quarantined = "quarantined" in result_page
+                        many_reqs = "Too Many Requests" in login_page
+                    if quarantined:
+                        solve_captcha()
+                    if many_reqs:
+                        print("Too many requests... sleeping")
+                        time.sleep(15)
+                        return self.get_crowns_bal(connection, username, password)
+                solve_captcha()
 
         def find_crowns(num_attempts=1):
             with connection.get(CrownCounter.CROWNS_URL) as res:
@@ -146,10 +156,12 @@ class CrownCounter(Thread):
                 except AttributeError:
                     if num_attempts != 4:
                         time.sleep(15)
+                        login()
                         return find_crowns(num_attempts=num_attempts + 1)
                     return CrownCounter.CROWNS_UNFOUND
             return int(balance.replace(",", ""))
 
+        login()
         return find_crowns()
 
 
