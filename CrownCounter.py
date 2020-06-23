@@ -7,6 +7,7 @@ try:
     from os.path import exists
     from pytesseract.pytesseract import TesseractNotFoundError
     from threading import Thread
+    from requests import ConnectionError
 
     from CaptchaSolve import CaptchaSolver
     from PIL import Image
@@ -94,14 +95,18 @@ class CrownCounter(Thread):
             }
 
             print("Logging in...")
-            with connection.post(CrownCounter.LOGIN_URL, data=login_data) as res:
-                login_page = res.text
-                quarantined = "quarantined" in login_page
-                many_reqs = "Too Many Requests" in login_page
+            try:
+                with connection.post(CrownCounter.LOGIN_URL, data=login_data) as res:
+                    login_page = res.text
+                    quarantined = "quarantined" in login_page
+                    many_reqs = "Too Many Requests" in login_page
+            except ConnectionError:
+                time.sleep(2)
+                return login()
             if many_reqs:
                 print("Too many requests... sleeping")
                 time.sleep(15)
-                return self.get_crowns_bal(connection, username, password)
+                return login()
 
             if quarantined:
                 def solve_captcha():
