@@ -306,8 +306,8 @@ def main():
     We now loop through the accounts in the original order designated by accounts.txt, 
     And add the output_text associated with each account, in the correct order
     """
-    for account in accounts:
-        output_text += f"{all_account_info[account]}\n"
+    for num, account in enumerate(accounts):
+        output_text += f"{num}: {all_account_info[account]}\n"
 
     """
     We do some formatting so that we can create fancy text to print that shows the purchaseable packs
