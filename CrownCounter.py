@@ -1,6 +1,7 @@
 try:
     import re
     import requests
+    requests.packages.urllib3.disable_warnings()
     import time
     import json
     from os import mkdir
@@ -96,12 +97,13 @@ class CrownCounter(Thread):
 
             print("Logging in...")
             try:
-                with connection.post(CrownCounter.LOGIN_URL, data=login_data) as res:
+                with connection.post(CrownCounter.LOGIN_URL, data=login_data, verify=False) as res:
                     login_page = res.text
                     quarantined = "quarantined" in login_page
                     many_reqs = "Too Many Requests" in login_page
-            except ConnectionError:
+            except ConnectionError as e:
                 time.sleep(2)
+
                 return login()
             if many_reqs:
                 print("Too many requests... sleeping")
