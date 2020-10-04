@@ -1,175 +1,24 @@
 try:
     import re
-    import requests
-    requests.packages.urllib3.disable_warnings()
+    from selenium import webdriver
+    from selenium.common.exceptions import *
+    from selenium.webdriver import ChromeOptions
     import time
     import json
+    import sys
+    import random
     from os import mkdir
     from os.path import exists
     from pytesseract.pytesseract import TesseractNotFoundError
     from threading import Thread
     from requests import ConnectionError
-
+    from _thread import start_new_thread
     from CaptchaSolve import CaptchaSolver
     from PIL import Image
     from PIL import UnidentifiedImageError
 except ModuleNotFoundError:
     print("Couldn't find one of the required modules... run setup.bat then restart")
-    quit()
-
-
-class CrownCounter(Thread):
-    LOGIN_URL = "https://www.wizard101.com/auth/wizard/login.theform"
-    QUARANTINED_URL = "https://www.wizard101.com/auth/wizard/quarantinedlogin.theform"
-    CAPTCHA_URL = "https://www.wizard101.com/Captcha?mode=ua&ts=1591424465802"
-    CROWNS_URL = "https://www.wizard101.com/user/kiaccounts/summary/game?context=am"
-    crowns_regex = re.compile(r'class="crownsbalance"><b>([\d,]+)<\/b>')
-
-    WAIT = 0
-    TESS_UNFOUND = 1
-    CROWNS_UNFOUND = 2
-    NUM_COUNTERS = 0
-
-    def __init__(self):
-        super().__init__()
-        self.finished = True
-        self.last_account = False
-        self.tess_unfound = False
-        self.current_account = CrownCounter.WAIT
-        self.account_info = {}
-        self.total_crowns = 0
-        self.energy_elixirs = 0
-        self.packs_199 = 0
-        self.packs_299 = 0
-        self.packs_399 = 0
-        self.packs_499 = 0
-        self.packs_599 = 0
-        self.id = CrownCounter.NUM_COUNTERS
-        CrownCounter.NUM_COUNTERS += 1
-
-    def run(self):
-        while not self.last_account:
-            if (not self.finished) and (self.current_account != CrownCounter.WAIT):
-                loginsplit = self.current_account.split(":")
-                if not len(loginsplit) == 2:
-                    curr_text = f"Account: {self.current_account} wasn't formatted correctly"
-                else:
-                    username = loginsplit[0]
-                    password = loginsplit[1]
-                    with requests.Session() as connection:
-                        crowns = self.get_crowns_bal(connection, username, password)
-                        if crowns == CrownCounter.TESS_UNFOUND:
-                            self.tess_unfound = True
-                            return
-                        elif crowns == CrownCounter.CROWNS_UNFOUND:
-                            curr_text = f"Couldn't find crowns for account: {self.current_account}"
-                        else:
-                            self.total_crowns += crowns
-                            self.energy_elixirs += crowns // 250
-                            self.packs_199 += crowns // 199
-                            self.packs_299 += crowns // 299
-                            self.packs_399 += crowns // 399
-                            self.packs_499 += crowns // 499
-                            self.packs_599 += crowns // 599
-                            curr_text = f"Account: {username} had {crowns} crowns"
-                print(curr_text)
-                self.account_info[self.current_account] = curr_text
-                self.finished = True
-            time.sleep(1)
-
-    def run_account(self, account):
-        self.current_account = account
-        self.finished = False
-
-    def get_crowns_bal(self, connection, username, password):
-        def login():
-            login_data = {
-                "userName": username,
-                "password": password,
-                # Necessary string in order to show KI that we're submitting a login
-                "t:formdata": "H4sIAAAAAAAAAJXRvUoDQRAH8E0wEkiniPiFFrHda0yhNqYRxUOEEAu7vdvxsslmd93Z804LW9/"
-                              "CJxBrrVPY+Q4+gG0qC/cCEeQkYrMLwzDz4z+PH6SWbZINlrpekIlbZnkQ6kSoPQtcWIhdaiVacqBtQplhcQ+oYwbQ"
-                              "2ZsWjbUFKSL/D41WoBzSI8E5qOaZ1TEgdtJoKBCFVhf3W4v52vN8lVRC0oi1clbLUzYERxbCPrtmgWQqCTrOCpXs5"
-                              "8aRxlTQtTJbJ6tlYopglR/hfa2Zvogh0Hbkiyx2hwIkb3bApWa7O2q8L71+llBX5I5UCkS92FFU/hS0/ysoRTR64j"
-                              "uX44e3KiG5+X2fYYiZthwL4JznTQuz24vuerZClsstsng9f9ffkA589ihQAs3gx1UnSBcKNSizX04G/fNQjSch1lw"
-                              "Pjvl3fLXJ+C8uOCzhZQIAAA==",
-            }
-
-            print("Logging in...")
-            try:
-                with connection.post(CrownCounter.LOGIN_URL, data=login_data, verify=False) as res:
-                    login_page = res.text
-                    quarantined = "quarantined" in login_page
-                    many_reqs = "Too Many Requests" in login_page
-            except ConnectionError as e:
-                time.sleep(2)
-
-                return login()
-            if many_reqs:
-                print("Too many requests... sleeping")
-                time.sleep(15)
-                return login()
-
-            if quarantined:
-                def solve_captcha():
-                    print("Solving captcha...")
-                    captcha_dir = "captcha"
-                    def write_captcha():
-                        with connection.get(CrownCounter.CAPTCHA_URL) as captcha_page:
-                            if not exists(captcha_dir):
-                                mkdir(captcha_dir)
-                            with open(f"{captcha_dir}/CaptchaImage{self.id}.png", "wb") as captcha_file:
-                                captcha_file.write(captcha_page.content)
-                    write_captcha()
-                    while True:
-                        try:
-                            captcha_img = Image.open(f"{captcha_dir}/CaptchaImage{self.id}.png")
-                            break
-                        except UnidentifiedImageError:
-                            time.sleep(10)
-                            write_captcha()
-                    try:
-                        captcha_solution = CrownCounter.solver.resolve(captcha_img)
-                    except TesseractNotFoundError:
-                        return CrownCounter.TESS_UNFOUND
-
-                    captcha_data = {
-                        "captcha": captcha_solution,
-                        "t:formdata": "H4sIAAAAAAAAAJ2RsUoDQRCGJwdRIZ1iITYiEUTkrjGNNgZBFA5RjjR2c7vjZWVv99zd86KFleA"
-                                      "z2PgEYqVgn8LOd/ABbCysLLwcSSGBQGzmh2Hg+/jn8RPqxQasY+66QSGu0fDgJEeDyglFPNSJUNuGuDDEXG6kNbCr"
-                                      "TeJjhqxLvsOMrDNXLZ9pQ1LEZaaZVqSc9Q8E56Sax0YzsjbK41RYK7Q6vVtZ6C2/znhQC6HBtHJGyyNMycF8eI6XG"
-                                      "EhUSRA5I1Sy08scNEYGHSMLHzYn2jLMHOuiP8zSuDXROEZLfjsul8jcviDJmxG5PFvr9Bsfi28/Y5oXcAO1gdbsEP"
-                                      "EPpfa0SmMt9p/41tn3w7sH0MuKJqxONJCDOc3zKpAbx95HX0svz7d7HnghzDEpyutDXlVStkSS0nLxp6V6xR7lLwg"
-                                      "o+KJxAgAA",
-                    }
-
-                    with connection.post(CrownCounter.QUARANTINED_URL, captcha_data) as res:
-                        result_page = res.text
-                        quarantined = "quarantined" in result_page
-                        many_reqs = "Too Many Requests" in login_page
-                    if quarantined:
-                        solve_captcha()
-                    if many_reqs:
-                        print("Too many requests... sleeping")
-                        time.sleep(15)
-                        return self.get_crowns_bal(connection, username, password)
-                solve_captcha()
-
-        def find_crowns(num_attempts=1):
-            with connection.get(CrownCounter.CROWNS_URL) as res:
-                raw_text = res.text
-                try:
-                    balance = CrownCounter.crowns_regex.search(raw_text).group(1)
-                except AttributeError:
-                    if num_attempts != 4:
-                        time.sleep(15)
-                        login()
-                        return find_crowns(num_attempts=num_attempts + 1)
-                    return CrownCounter.CROWNS_UNFOUND
-            return int(balance.replace(",", ""))
-
-        login()
-        return find_crowns()
+    sys.exit()
 
 
 def main():
@@ -180,7 +29,8 @@ def main():
         with open("config.txt", "w") as config_file:
             config_data = {
                 "threads": 1,
-                "tesseract.exe_path": "C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
+                "tesseract.exe_path": "C:\\Program Files\\Tesseract-OCR\\tesseract.exe",
+                "headless (Y/N)": "N"
             }
             config_json = json.dumps(config_data, indent=4, sort_keys=True)
             config_file.write(config_json)
@@ -206,7 +56,7 @@ def main():
     # If there was a error finding a file, the program will exit so the user can adjust their settings
     if FILE_ERROR:
         input("Press any key to exit...")
-        quit()
+        sys.exit()
 
     """
     We read the previously defined config_json set to find the thread count
@@ -215,21 +65,331 @@ def main():
     try:
         num_threads = config_json.get("threads")
         tess_path = config_json.get("tesseract.exe_path")
-    except KeyError:
+        headless = config_json.get("headless (Y/N)").replace(",", "").replace(" ", "").lower() == "y"
+    except (KeyError, AttributeError):
         print("Config.txt wasn't configured properly... recreating it")
         create_config()
-    CrownCounter.solver = CaptchaSolver(tess_path)
+        input("Press any key to exit...")
+        sys.exit()
     all_threads = []
+    chrome_options = ChromeOptions()
+    chrome_options.add_extension('VPN/3.9.8_0.crx')
+    chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
+    if headless:
+        chrome_options.add_argument("--headless")
 
+    action_available = True
+    default_await = .3
+    default_notify = max(3, 10 / num_threads)
+
+    def await_freedom(await_time=default_await):
+        while not action_available:
+            time.sleep(default_await)
+
+    def notify_input(notify_time=default_notify):
+        def helper():
+            global action_available
+            action_available = False
+            time.sleep(notify_time)
+            action_available = True
+        start_new_thread(helper, ())
+
+    def await_and_notify(await_time=default_await, notify_time=default_notify):
+        await_freedom(await_time=await_time)
+        notify_input(notify_time=notify_time)
+
+    def start_vpn(driver, country_id):
+        driver.get("chrome-extension://oofgbpoabipfcfjapgnbbjjaenockbdp/popup.html")
+        time.sleep(5)
+        while True:
+            try:
+
+                time.sleep(2)
+                driver.execute_script("""
+                                        for (const a of document.querySelectorAll("a")) {
+                                            if (a.textContent.includes("English")) {
+                                                a.click();
+                                                break;
+                                            }
+                                        }
+                                    """)
+                break
+            except JavascriptException:
+                pass
+        while True:
+            try:
+
+                time.sleep(2)
+                driver.execute_script("""
+                                        let reg = document.getElementById("register-button");
+                                        reg.click();
+                                    """)
+                break
+            except JavascriptException:
+                pass
+        while True:
+            try:
+                driver.execute_script("""
+                                        let lic = document.getElementById("eula-label");
+                                        let term = document.getElementById("terms-label");
+                                        let priv = document.getElementById("pp-label");        
+                                        lic.click();
+                                        term.click();
+                                        priv.click();
+
+                                        let regtwo = document.getElementById("create-authcode");
+                                        regtwo.click();
+                                    """)
+                break
+            except JavascriptException:
+                pass
+        while True:
+            try:
+                time.sleep(2)
+                driver.execute_script("""
+                                        let start = document.getElementById("login-with-authcode");
+                                        start.click();
+                                    """)
+                break
+            except JavascriptException:
+                pass
+        while True:
+            try:
+                time.sleep(2)
+                driver.execute_script("""
+                                        let countryTag;
+                                        switch (arguments[0]) {
+                                            case 0:
+                                                countryTag = "0ua";
+                                                break;
+                                            case 1:
+                                                countryTag = "0ca";
+                                                break;
+                                            case 2:
+                                                countryTag = "0gb";
+                                                break;
+                                            case 3:
+                                                countryTag = "0fr";
+                                                break;
+                                            case 4:
+                                                countryTag = "0it";
+                                                break;
+                                            case 5:
+                                                countryTag = "0de";
+                                                break;
+                                        }
+                                        let countryElem = document.getElementById(countryTag);
+                                        countryElem.click();
+                                        """, country_id)
+                break
+            except JavascriptException:
+                pass
+
+    class CrownCounter(Thread):
+        LOGIN_URL = "https://www.wizard101.com/auth/wizard/login.theform"
+        QUARANTINED_URL = "https://www.wizard101.com/auth/wizard/quarantinedlogin.theform"
+        CAPTCHA_URL = "https://www.wizard101.com/Captcha?mode=ua&ts=1591424465802"
+        CROWNS_URL = "https://www.wizard101.com/user/kiaccounts/summary/game?context=am"
+        solver = CaptchaSolver(tess_path)
+        crowns_regex = re.compile(r'class="crownsbalance"><b>([\d,]+)<\/b>')
+
+        WAIT = 0
+        TESS_UNFOUND = 1
+        CROWNS_UNFOUND = 2
+        NUM_COUNTERS = 0
+
+        def __init__(self, driver):
+            super().__init__()
+            self.driver = driver
+            self.finished = True
+            self.last_account = False
+            self.tess_unfound = False
+            self.current_account = CrownCounter.WAIT
+            self.account_info = {}
+            self.total_crowns = 0
+            self.energy_elixirs = 0
+            self.packs_199 = 0
+            self.packs_299 = 0
+            self.packs_399 = 0
+            self.packs_499 = 0
+            self.packs_599 = 0
+            self.id = CrownCounter.NUM_COUNTERS
+            CrownCounter.NUM_COUNTERS += 1
+
+        def many_requests(self):
+            value = "Too Many Requests" in self.driver.page_source
+            if value:
+                print("Too many requests... sleeping")
+                time.sleep(15)
+            return value
+
+        def run(self):
+            while not self.last_account:
+                if (not self.finished) and (self.current_account != CrownCounter.WAIT):
+                    loginsplit = self.current_account.split(":")
+                    if not len(loginsplit) == 2:
+                        curr_text = f"Account: {self.current_account} wasn't formatted correctly"
+                    else:
+                        username = loginsplit[0]
+                        password = loginsplit[1]
+                        crowns = self.get_crowns_bal(username, password)
+                        if crowns == CrownCounter.TESS_UNFOUND:
+                            self.tess_unfound = True
+                            return
+                        elif crowns == CrownCounter.CROWNS_UNFOUND:
+                            curr_text = f"Couldn't find crowns for account: {self.current_account}"
+                        else:
+                            self.total_crowns += crowns
+                            self.energy_elixirs += crowns // 250
+                            self.packs_199 += crowns // 199
+                            self.packs_299 += crowns // 299
+                            self.packs_399 += crowns // 399
+                            self.packs_499 += crowns // 499
+                            self.packs_599 += crowns // 599
+                            curr_text = f"Account: {username} had {crowns} crowns"
+                    print(curr_text)
+                    self.account_info[self.current_account] = curr_text
+                    self.finished = True
+                time.sleep(1)
+
+        def run_account(self, account):
+            self.current_account = account
+            self.finished = False
+
+        def get_crowns_bal(self, username, password):
+            def login(username: str, password: str):
+                """
+                Logs in an account
+                :param username:
+                :param password:
+                """
+                self.username = username
+
+                def enter_credentials():
+                    """
+                    Enters credentials and presses login
+                    """
+                    await_and_notify()
+                    self.driver.get(CrownCounter.LOGIN_URL)
+                    if self.many_requests():
+                        return enter_credentials()
+                    await_and_notify()
+                    try:
+                        self.driver.execute_script("""
+                            let username = arguments[0];
+                            let password = arguments[1];
+                            let userElem = document.getElementById("userName");
+                            let passElem = document.getElementsByName("password")[0];
+                            userElem.value = username;
+                            passElem.value = password;
+                            let enterButton = document.getElementById("bp_login");
+                            enterButton.click();
+                        """, username, password)
+                    except JavascriptException:
+                        time.sleep(1)
+                        return enter_credentials()
+                    while self.driver.current_url == CrownCounter.LOGIN_URL:
+                        time.sleep(1)
+                    if self.many_requests():
+                        return enter_credentials()
+
+                def handle_login_captcha():
+                    """
+                    Handles the possibility of a login captcha
+                    """
+                    try:
+                        captcha_element = self.driver.find_element_by_id("captchaImage")
+                    except NoSuchElementException:
+                        return
+                    if not exists("screenshots"):
+                        mkdir("screenshots")
+                    self.driver.save_screenshot(f"screenshots/login_screenshot{self.id}.png")
+                    captcha_location = captcha_element.location
+                    # KI captchas have a standard width of 230px and height of 50px
+                    captcha_width = 230
+                    captcha_height = 50
+                    # Captcha location in screenshot, bot left in x1, y1 and top right in x2, y2
+                    bot_x, bot_y = captcha_location.get("x"), captcha_location.get("y")
+                    top_x, top_y = (captcha_location.get("x") + captcha_width), (
+                                captcha_location.get("y") + captcha_height)
+                    screenshot = Image.open(f"screenshots/login_screenshot{self.id}.png")
+                    # The screenshot image will have to crop out the section containing the captcha to get the captcha image
+                    captcha = screenshot.crop((bot_x, bot_y, top_x, top_y))
+                    captcha_solution = CrownCounter.solver.resolve(captcha)
+
+                    await_and_notify()
+                    self.driver.execute_script("""
+                        let captchaField = document.getElementById("captcha");
+                        captchaField.value = arguments[0];
+                        let enterButton = document.getElementById("login");
+                        enterButton.click();
+                    """, captcha_solution)
+                    if self.many_requests():
+                        return attempt_login()
+
+                    QUARANTINED_URL = r"https://www.wizard101.com/auth/wizard/QuarantinedLogin" \
+                                      r"/8ad6a4041b4fd6c1011b5160b0670010?fpRedirectUrl=https%3A%2F%2Fwww.wizard101.com" \
+                                      r"%2Fgame&reset=1&fpPopup=1"
+                    OTHER_QUARANTINED_URL = r"https://www.wizard101.com/auth/wizard/quarantinedlogin" \
+                                            r"/8ad6a4041b4fd6c1011b5160b0670010"
+
+                    while self.driver.current_url == QUARANTINED_URL or self.driver.current_url == OTHER_QUARANTINED_URL:
+                        attempt_login()
+
+                def attempt_login():
+                    enter_credentials()
+                    await_and_notify()
+                    handle_login_captcha()
+
+                attempt_login()
+
+            def find_crowns(num_attempts=1):
+                await_and_notify()
+                self.driver.get(CrownCounter.CROWNS_URL)
+                try:
+                    balance = CrownCounter.crowns_regex.search(self.driver.page_source).group(1)
+                except AttributeError:
+                    if num_attempts != 4:
+                        time.sleep(15)
+                        login(username, password)
+                        return find_crowns(num_attempts=num_attempts + 1)
+                    return CrownCounter.CROWNS_UNFOUND
+                return int(balance.replace(",", ""))
+
+            login(username, password)
+            time.sleep(5)
+            return find_crowns()
+        def quit_driver(self):
+            self.driver.quit()
+    
+    driver_info = {
+        "started": 0,
+        "finished": 0
+    }
+    def create_thread(info=driver_info):
+        driver = webdriver.Chrome(options=chrome_options)
+        info["started"] += 1
+        start_vpn(driver, (info["started"] - 1) % 6)
+        all_threads.append(CrownCounter(driver))
+        info["finished"] += 1
+
+
+    print("Creating drivers...")
     for thread in range(num_threads):
         """
         We will create a new CounterThread and 
         store it in the all_threads list for each thread defined by the user
         """
-        new_thread = CrownCounter()
-        all_threads.append(new_thread)
-        # Starting each thread will tell it to start looking for accounts to solve, by calling the run function
-        new_thread.start()
+        start_new_thread(create_thread, ())
+    while driver_info["finished"] != num_threads:
+        time.sleep(1)
+
+    def quit_drivers():
+        for thread in all_threads:
+            start_new_thread(thread.quit_driver, ())
+
+    for thread in all_threads:
+        thread.start()
 
     for account in accounts:
         """
@@ -238,21 +398,23 @@ def main():
         """
         found_assignment = False
         while not found_assignment:
-            for thread in all_threads:
-                """
-                The thread.finished variable determines whether a thread has finished its current account
-                If it has finished its current account, we will designate it the current account in the loop,
-                and break to the next loop to designate a thread to the next account
-                """
-                if thread.tess_unfound:
-                    print("Tesseract path was invalid in config.txt. Delete config to restore defaults")
-                    input("Press enter to exit...")
-                    quit()
-                if thread.finished:
-                    thread.run_account(account)
-                    found_assignment = True
-                    break
+            desired_assignment = all_threads[random.randint(0, num_threads-1)]
+            """
+            The thread.finished variable determines whether a thread has finished its current account
+            If it has finished its current account, we will designate it the current account in the loop,
+            and break to the next loop to designate a thread to the next account
+            """
+            if desired_assignment.tess_unfound:
+                print("Tesseract path was invalid in config.txt. Delete config to restore defaults")
+                quit_drivers()
+                input("Press enter to exit...")
+                sys.exit()
+            if desired_assignment.finished:
+                desired_assignment.run_account(account)
+                found_assignment = True
+                break
             time.sleep(2)
+        time.sleep(5)
 
     # This wait is necessary to prevent the program going too fast and forgetting to join together
     # I really dont have a clue why. I probably did something wrong
@@ -329,8 +491,9 @@ Purchaseable Energy elixirs: {energy_elixirs}"""
     # We now write output_text to the output_file, as originally intended
     with open("output.txt", "w") as output_file:
         output_file.write(output_text)
+    quit_drivers()
     input("\nPress enter to exit...")
-    quit()
+    sys.exit()
 
 
 if __name__ == "__main__":
