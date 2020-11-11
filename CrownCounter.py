@@ -186,10 +186,11 @@ def main():
                 pass
 
     class CrownCounter(Thread):
-        LOGIN_URL = "https://www.wizard101.com/auth/wizard/login.theform"
-        QUARANTINED_URL = "https://www.wizard101.com/auth/wizard/quarantinedlogin.theform"
-        CAPTCHA_URL = "https://www.wizard101.com/Captcha?mode=ua&ts=1591424465802"
-        CROWNS_URL = "https://www.wizard101.com/user/kiaccounts/summary/game?context=am"
+        LOGIN_URL = r"https://www.wizard101.com/auth/wizard/login.theform"
+        LOGOUT_URL = r"https://www.wizard101.com/auth/logout/game?redirectUrl=https%3A%2F%2Fwww.wizard101.com%2Fgame"
+        QUARANTINED_URL = r"https://www.wizard101.com/auth/wizard/quarantinedlogin.theform"
+        CAPTCHA_URL = r"https://www.wizard101.com/Captcha?mode=ua&ts=1591424465802"
+        CROWNS_URL = r"https://www.wizard101.com/user/kiaccounts/summary/game?context=am"
         solver = CaptchaSolver(tess_path)
         crowns_regex = re.compile(r'class="crownsbalance"><b>([\d,]+)<\/b>')
 
@@ -251,6 +252,10 @@ def main():
                     self.account_info[self.current_account] = curr_text
                     self.finished = True
                 time.sleep(1)
+
+        def log_out(self):
+            await_and_notify()
+            self.driver.get(CrownCounter.LOGOUT_URL)
 
         def run_account(self, account):
             self.current_account = account
@@ -354,6 +359,7 @@ def main():
                         login(username, password)
                         return find_crowns(num_attempts=num_attempts + 1)
                     return CrownCounter.CROWNS_UNFOUND
+                self.log_out()
                 return int(balance.replace(",", ""))
 
             login(username, password)
